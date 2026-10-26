@@ -63,7 +63,7 @@ HEAP_CHECK_NNMAIN_SECS = 5
 
 PROGRESS = 'auto'                       # stage lines on the console: 'bar' (one line per stage, redrawn in place), 'lines' (a plain line every BEAT seconds), 'off' (only each stage's start and end); 'auto' = bar in a terminal or Spyder, lines when the output goes to a file; 'json' = one JSON event per line, for a program that shows the build
 BEAT = 30                               # seconds between progress lines in 'lines' mode
-TOOL_PATHS = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/local/share/dotnet', os.path.expanduser('~/.dotnet')]   # GUI apps such as Spyder do not get the shell's PATH
+TOOL_PATHS = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/local/share/dotnet', os.path.expanduser('~/.dotnet'), '/usr/sbin', '/sbin']   # GUI apps such as Spyder do not get the shell's PATH
 
 
 class BuildError(Exception):
@@ -963,7 +963,10 @@ def glslc_done(d):   # capture files written whole: a GLSLC output (magic 0x1986
 
 
 def apple_silicon():   # hw.optional.arm64 is 1 on Apple silicon (for a Python under Rosetta too); an Intel Mac has no such key
-    return subprocess.run(['sysctl', '-n', 'hw.optional.arm64'], capture_output=True, text=True).stdout.strip() == '1'
+    sysctl = shutil.which('sysctl') or next((p for p in ('/usr/sbin/sysctl', '/usr/bin/sysctl') if os.path.isfile(p)), None)
+    if not sysctl:
+        raise BuildError('sysctl was not found; add /usr/sbin to PATH or install the macOS command-line tools')
+    return subprocess.run([sysctl, '-n', 'hw.optional.arm64'], capture_output=True, text=True).stdout.strip() == '1'
 
 
 HOST_DIRS = ('dm/host', 'dm/gfx', 'dm/gfx/nvn', 'dm/gfx/nvn/include', 'dm/gfx/tex', 'dm/gfx/vk', 'dm/gfx/gl')   # the folders the host's compile line takes its sources and headers from (dm/host/Makefile SRC, GFX, GFX_H)
