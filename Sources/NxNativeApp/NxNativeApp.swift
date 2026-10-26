@@ -147,7 +147,9 @@ final class BuildModel: ObservableObject {
         process.standardError = outputPipe
         var environment = ProcessInfo.processInfo.environment
         environment["PYTHONUNBUFFERED"] = "1"
-        environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+        // Keep the system administration tools available to the Python pipeline.
+        // macOS ships sysctl in /usr/sbin, while GUI apps do not inherit a shell PATH.
+        environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
         process.environment = environment
         self.process = process
 
