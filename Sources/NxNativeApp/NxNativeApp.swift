@@ -131,7 +131,8 @@ final class BuildModel: ObservableObject {
             "--platform", target.scriptPlatform,
             "--progress", "lines"
         ]
-        let displayCommand = (["python3"] + arguments).map(Self.shellQuote).joined(separator: " ")
+        let python = Self.findPython(for: gameURL)
+        let displayCommand = ([python.path] + arguments).map(Self.shellQuote).joined(separator: " ")
 
         isBuilding = true
         lastExitCode = nil
@@ -140,16 +141,24 @@ final class BuildModel: ObservableObject {
 
         let process = Process()
         let outputPipe = Pipe()
-        process.executableURL = Self.findPython()
+        process.executableURL = python
         process.arguments = arguments
         process.currentDirectoryURL = repositoryURL
         process.standardOutput = outputPipe
         process.standardError = outputPipe
         var environment = ProcessInfo.processInfo.environment
         environment["PYTHONUNBUFFERED"] = "1"
-        // Keep the system administration tools available to the Python pipeline.
-        // macOS ships sysctl in /usr/sbin, while GUI apps do not inherit a shell PATH.
-        environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        // GUI apps do not inherit a shell PATH. Keep macOS tools, Homebrew tools,
+        // and a game-folder venv available to every stage of the pipeline.
+        let pythonBin = python.deletingLastPathComponent().path
+        environment["PATH"] = "\(pythonBin):/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        if FileManager.default.fileExists(atPath: "/Applications/Xcode.app/Contents/Developer") {
+            environment["DEVELOPER_DIR"] = "/Applications/Xcode.app/Contents/Developer"
+        }
+        if FileManager.default.fileExists(atPath: "/opt/homebrew/opt/dotnet/libexec") {
+            environment["DOTNET_ROOT"] = "/opt/homebrew/opt/dotnet/libexec"
+            environment["DOTNET_ROOT_ARM64"] = "/opt/homebrew/opt/dotnet/libexec"
+        }
         process.environment = environment
         self.process = process
 
@@ -249,8 +258,10 @@ final class BuildModel: ObservableObject {
         return nil
     }
 
-    private static func findPython() -> URL {
+    private static func findPython(for gameURL: URL) -> URL {
+        let gameVenv = gameURL.appendingPathComponent(".nxnative-venv/bin/python3")
         let candidates = [
+            gameVenv.path,
             ProcessInfo.processInfo.environment["NXNATIVE_PYTHON"],
             "/opt/homebrew/bin/python3",
             "/usr/local/bin/python3",
