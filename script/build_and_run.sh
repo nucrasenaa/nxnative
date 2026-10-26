@@ -32,6 +32,9 @@ mkdir -p "$APP_RESOURCES/nxnative"
 /usr/bin/ditto "$ROOT_DIR/dm" "$APP_RESOURCES/nxnative/dm"
 /usr/bin/ditto "$ROOT_DIR/scripts" "$APP_RESOURCES/nxnative/scripts"
 /usr/bin/ditto "$ROOT_DIR/LICENSE" "$APP_RESOURCES/nxnative/LICENSE"
+if [ -d "$ROOT_DIR/.nxnative-venv" ]; then
+  /usr/bin/ditto "$ROOT_DIR/.nxnative-venv" "$APP_RESOURCES/nxnative/.nxnative-venv"
+fi
 
 cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
