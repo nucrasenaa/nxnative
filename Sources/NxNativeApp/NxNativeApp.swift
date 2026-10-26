@@ -178,7 +178,9 @@ final class BuildModel: ObservableObject {
                 try process.run()
                 let outputHandle = outputPipe.fileHandleForReading
                 while true {
-                    let data = try outputHandle.read(upToCount: 4096) ?? Data()
+                    // availableData returns as soon as the child writes anything;
+                    // read(upToCount:) can wait for the full buffer and freeze the UI.
+                    let data = outputHandle.availableData
                     if data.isEmpty { break }
                     let output = String(data: data, encoding: .utf8) ?? "(non-UTF-8 build output)"
                     Task { @MainActor in
