@@ -60,6 +60,8 @@ final class BuildModel: ObservableObject {
     @Published var status = "Ready"
     @Published var isBuilding = false
     @Published var lastExitCode: Int32?
+    @Published var progress: Double?
+    @Published var progressLabel = "Ready"
 
     private var process: Process?
 
@@ -136,6 +138,8 @@ final class BuildModel: ObservableObject {
 
         isBuilding = true
         lastExitCode = nil
+        progress = 0
+        progressLabel = "Starting build..."
         status = "Building for \(target.title)"
         log = "Command:\n\(displayCommand)\n\n"
 
@@ -210,11 +214,50 @@ final class BuildModel: ObservableObject {
         lastExitCode = exitCode
         isBuilding = false
         process = nil
+        progress = exitCode == 0 ? 1 : nil
+        progressLabel = exitCode == 0 ? "Build complete" : "Build failed"
         status = exitCode == 0 ? "Build complete" : "Build failed (exit \(exitCode))"
     }
 
     private func appendLog(_ text: String) {
         log.append(text)
+        updateProgress(from: text)
+    }
+
+    private func updateProgress(from text: String) {
+        let stageRegex = try! NSRegularExpression(pattern: #"\[(\d+)/(\d+)\]"#)
+        let percentRegex = try! NSRegularExpression(pattern: #"(\d{1,3})%"#)
+
+        for rawLine in text.split(whereSeparator: { $0.isNewline }) {
+            let line = String(rawLine).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !line.isEmpty else { continue }
+            let lineRange = NSRange(line.startIndex..<line.endIndex, in: line)
+
+            var stage: Int?
+            var stageCount: Int?
+            if let match = stageRegex.firstMatch(in: line, range: lineRange),
+               let stageRange = Range(match.range(at: 1), in: line),
+               let countRange = Range(match.range(at: 2), in: line) {
+                stage = Int(line[stageRange])
+                stageCount = Int(line[countRange])
+            }
+
+            var stagePercent: Double?
+            if let matches = percentRegex.matches(in: line, range: lineRange).last,
+               let percentRange = Range(matches.range(at: 1), in: line),
+               let value = Double(line[percentRange]) {
+                stagePercent = min(max(value, 0), 100)
+            }
+
+            if let stage, let stageCount, stageCount > 0 {
+                let withinStage = (stagePercent ?? 0) / 100
+                progress = min(max((Double(stage - 1) + withinStage) / Double(stageCount), 0), 1)
+                progressLabel = stagePercent.map { "Stage \(stage)/\(stageCount) · \(Int($0))%" } ?? "Stage \(stage)/\(stageCount)"
+            } else if let stagePercent {
+                progress = stagePercent / 100
+                progressLabel = "\(Int(stagePercent))%"
+            }
+        }
     }
 
     private func chooseURL(
@@ -288,6 +331,9 @@ struct ContentView: View {
             Divider()
             inputSection
             targetSection
+            if model.isBuilding || model.progress != nil {
+                progressSection
+            }
             actionBar
             logSection
         }
@@ -387,6 +433,31 @@ struct ContentView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(!model.canBuild)
             }
+        }
+    }
+
+    private var progressSection: some View {
+        GroupBox("Progress") {
+            VStack(alignment: .leading, spacing: 8) {
+                if let progress = model.progress {
+                    ProgressView(value: progress)
+                    HStack {
+                        Text(model.progressLabel)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(Int(progress * 100))%")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    ProgressView()
+                    Text(model.progressLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(4)
         }
     }
 
