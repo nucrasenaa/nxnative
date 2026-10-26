@@ -143,7 +143,8 @@ final class BuildModel: ObservableObject {
 
         isBuilding = true
         lastExitCode = nil
-        progress = 0
+        // A stage without a numeric percentage is indeterminate; do not show a misleading 0% bar.
+        progress = nil
         progressLabel = "Starting build..."
         status = "Building for \(target.title)"
         log = "Command:\n\(displayCommand)\n\n"
@@ -255,9 +256,14 @@ final class BuildModel: ObservableObject {
             }
 
             if let stage, let stageCount, stageCount > 0 {
-                let withinStage = (stagePercent ?? 0) / 100
-                progress = min(max((Double(stage - 1) + withinStage) / Double(stageCount), 0), 1)
-                progressLabel = stagePercent.map { "Stage \(stage)/\(stageCount) · \(Int($0))%" } ?? "Stage \(stage)/\(stageCount)"
+                if let stagePercent {
+                    let withinStage = stagePercent / 100
+                    progress = min(max((Double(stage - 1) + withinStage) / Double(stageCount), 0), 1)
+                    progressLabel = "Stage \(stage)/\(stageCount) · \(Int(stagePercent))%"
+                } else {
+                    progress = nil
+                    progressLabel = "Stage \(stage)/\(stageCount)"
+                }
             } else if let stagePercent {
                 progress = stagePercent / 100
                 progressLabel = "\(Int(stagePercent))%"
