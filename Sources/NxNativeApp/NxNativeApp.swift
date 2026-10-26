@@ -76,6 +76,11 @@ final class BuildModel: ObservableObject {
             keysURL.map { !$0.hasDirectoryPath } == true
     }
 
+    var isBundledRepository: Bool {
+        guard let repositoryURL else { return false }
+        return Bundle.main.resourceURL?.appendingPathComponent("nxnative").standardizedFileURL == repositoryURL.standardizedFileURL
+    }
+
     func chooseRepository() {
         guard let url = chooseURL(
             title: "Choose nxnative repository",
@@ -286,6 +291,9 @@ final class BuildModel: ObservableObject {
         if let configured = ProcessInfo.processInfo.environment["NXNATIVE_ROOT"] {
             candidates.append(URL(fileURLWithPath: configured))
         }
+        if let bundled = Bundle.main.resourceURL?.appendingPathComponent("nxnative") {
+            candidates.append(bundled)
+        }
         candidates.append(URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
         candidates.append(Bundle.main.bundleURL)
 
@@ -358,12 +366,22 @@ struct ContentView: View {
     private var inputSection: some View {
         GroupBox("Inputs") {
             VStack(spacing: 12) {
-                PickerRow(
-                    title: "nxnative repository",
-                    value: model.repositoryURL?.path ?? "Not found",
-                    buttonTitle: "Choose...",
-                    action: model.chooseRepository
-                )
+                if model.isBundledRepository {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text("nxnative engine")
+                            .frame(width: 145, alignment: .leading)
+                        Label("Bundled in this app", systemImage: "shippingbox.fill")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                } else {
+                    PickerRow(
+                        title: "nxnative repository",
+                        value: model.repositoryURL?.path ?? "Not found",
+                        buttonTitle: "Choose...",
+                        action: model.chooseRepository
+                    )
+                }
                 PickerRow(
                     title: "Game folder",
                     value: model.gameURL?.path ?? "Select a folder containing NSP/XCI files",

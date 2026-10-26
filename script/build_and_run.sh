@@ -11,6 +11,7 @@ DIST_DIR="$ROOT_DIR/dist"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
+APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_BINARY="$APP_MACOS/$APP_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 
@@ -23,6 +24,14 @@ rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS"
 cp "$BUILD_BINARY" "$APP_BINARY"
 chmod +x "$APP_BINARY"
+
+# Embed the nxnative runtime so users do not need to locate this checkout.
+# Game files and prod.keys stay outside the app and are selected at build time.
+mkdir -p "$APP_RESOURCES"
+mkdir -p "$APP_RESOURCES/nxnative"
+/usr/bin/ditto "$ROOT_DIR/dm" "$APP_RESOURCES/nxnative/dm"
+/usr/bin/ditto "$ROOT_DIR/scripts" "$APP_RESOURCES/nxnative/scripts"
+/usr/bin/ditto "$ROOT_DIR/LICENSE" "$APP_RESOURCES/nxnative/LICENSE"
 
 cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
