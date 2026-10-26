@@ -5,6 +5,7 @@
 .DS_Store
 __pycache__/
 .build/
+.nxnative-venv/
 dist/
 script/.DS_Store
 # Made from each shader build's Mac outputs (c1_guard.py, cb_extent.py; the NSP script makes them), not committed

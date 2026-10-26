@@ -133,7 +133,7 @@ final class BuildModel: ObservableObject {
             "--platform", target.scriptPlatform,
             "--progress", "lines"
         ]
-        let python = Self.findPython(for: gameURL)
+        let python = Self.findPython(for: gameURL, repositoryURL: repositoryURL)
         let displayCommand = ([python.path] + arguments).map(Self.shellQuote).joined(separator: " ")
 
         isBuilding = true
@@ -301,10 +301,12 @@ final class BuildModel: ObservableObject {
         return nil
     }
 
-    private static func findPython(for gameURL: URL) -> URL {
+    private static func findPython(for gameURL: URL, repositoryURL: URL) -> URL {
         let gameVenv = gameURL.appendingPathComponent(".nxnative-venv/bin/python3")
+        let repositoryVenv = repositoryURL.appendingPathComponent(".nxnative-venv/bin/python3")
         let candidates = [
             gameVenv.path,
+            repositoryVenv.path,
             ProcessInfo.processInfo.environment["NXNATIVE_PYTHON"],
             "/opt/homebrew/bin/python3",
             "/usr/local/bin/python3",
